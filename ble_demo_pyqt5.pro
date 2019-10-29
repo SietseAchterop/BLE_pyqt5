@@ -1,4 +1,4 @@
-TARGET = lowenergyscanner
+TARGET = ble_demo_pyqt5.pro
 INCLUDEPATH += .
 
 QT += quick bluetooth
@@ -21,5 +21,5 @@ HEADERS += \
 RESOURCES += \
     resources.qrc
 
-target.path = $$[QT_INSTALL_EXAMPLES]/bluetooth/lowenergyscanner
+target.path = result/lowenergyscanner
 INSTALLS += target
