@@ -1,0 +1,5 @@
+# my .gitignore
+
+*~
+*.py[co]
+
