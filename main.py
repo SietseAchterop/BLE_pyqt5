@@ -231,6 +231,7 @@ class Device(QObject):
                 print(f'UUID: {nextDevice.address().toString()}, Name: {nextDevice.name()}')
                 self.devices.append(DeviceInfo(nextDevice))
 
+        print(f'lijst devs:  {self.devices}')
         self.devicesUpdated.emit()
         self.m_deviceScanState = False
         self.stateChanged.emit()
@@ -259,7 +260,6 @@ class Device(QObject):
             if d.getAddress() == address:
                 self.currentDevice.setDevice(d.getDevice())
 
-        # wat nu doen?
         if not self.currentDevice.getDevice().isValid():
             print(f'Warning: Not a valid device')
             return
@@ -347,8 +347,8 @@ class Device(QObject):
 
     @pyqtSlot(QtBt.QLowEnergyController.Error)
     def errorReceived(self, error=None):
-        print('Error:  controller.errorString()')
-        self.setUpdate('errorstring ')
+        # print(f'Error:  {self.controller.errorString()}')
+        self.setUpdate(f'Back\n{self.controller.errorString()}')
 
     def setUpdate(self, s: str):
         self.m_message = s

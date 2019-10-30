@@ -56,7 +56,7 @@ import Bluno 1.0
 
 Window {
     id: back
-    visible: true
+    visible: true     // misschien zorgt dit voor de extra windows?
     width: 300
     height: 600
     property bool deviceState: device.state
