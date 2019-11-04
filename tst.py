@@ -1,11 +1,31 @@
+import sys
+
+from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtQml import QQmlApplicationEngine, qmlRegisterType
+from PyQt5.QtCore import QVariant, QObject, pyqtSignal, pyqtSlot, pyqtProperty, pyqtRemoveInputHook
+from PyQt5 import QtBluetooth as QtBt
 
 
-class Test:
-    n = 3
+# app = QGuiApplication(sys.argv)
 
-    def __init__(self):
-        print(f'n {self.n}')
+devicesUpdated         = pyqtSignal()
+servicesUpdated        = pyqtSignal()
 
-    def getN():
-        return self.n
-    
+
+def getDevices(self):
+    print('devices')
+    return 'de devices'
+
+def getServices(self):
+    print('services')
+    return 'de services'
+
+
+devicesList = pyqtProperty(QVariant, getDevices, notify=devicesUpdated)
+servicesList = pyqtProperty(QVariant, getServices, notify=servicesUpdated)
+
+self ='iets'
+d=devicesList.fget(self)
+print(d)
+d=servicesList.fget(self)
+print(d)

@@ -54,6 +54,7 @@ import QtQuick.Window 2.12
 
 import Bluno 1.0
 
+// of ApplicationWindow van maken? Maar die is heel anders
 Window {
     id: back
     visible: true     // misschien zorgt dit voor de extra windows?
@@ -139,7 +140,7 @@ Window {
                     else
                         "Address type: Public"
         }
-
+	// ! lijkt hier niet te werken??
         onButtonClick: device.useRandomAddress = !device.useRandomAddress;
     }
 

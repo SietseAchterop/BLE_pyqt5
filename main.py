@@ -1,8 +1,8 @@
-import pdb, sys
+import sys
 
 from PyQt5.QtGui import QGuiApplication
 from PyQt5.QtQml import QQmlApplicationEngine, qmlRegisterType
-from PyQt5.QtCore import QVariant, QObject, pyqtSignal, pyqtSlot, pyqtProperty, pyqtRemoveInputHook
+from PyQt5.QtCore import QVariant, QObject, pyqtSignal, pyqtSlot, pyqtProperty, QMetaObject, Qt, QTimer
 from PyQt5 import QtBluetooth as QtBt
 
 
@@ -10,7 +10,7 @@ class DeviceInfo(QObject):
 
     deviceChanged = pyqtSignal()
 
-    def __init__(self, d= None):
+    def __init__(self, d=None):
         QObject.__init__(self)
         if d is not None:
             self.device = d
@@ -36,45 +36,52 @@ class ServiceInfo(QObject):
 
     serviceChanged = pyqtSignal()
 
-    def __init__(self, service: QtBt.QLowEnergyService):
-        self.m_service = service
+    def __init__(self, s: QtBt.QLowEnergyService):
+        QObject.__init__(self)
+        if s is not None:
+            self.services = s
 
     def service(self):
-        return self.service
+        return self.services
 
     def getName(self) -> str:
-        if self.m_service is None:
-            return []
-        return self.m_service.serviceName()
+        if self.services is None:
+            return ''
+        return self.services.serviceName()
 
     def getType(self):
-        if self.m_service is None:
-            return []
+        if self.services is None:
+            return ''
 
-        result = []
-        if self.m_service.type() and QtBt.QLowEnergyService.PrimaryService:
+        result = ''
+        if self.services.type() & QtBt.QLowEnergyService.PrimaryService:
             result += 'primary'
         else:
             result += 'secondary'
-        if self.m_service.type() and QtBt.QLowEnergyService.IncludedService:
+        if self.services.type() & QtBt.QLowEnergyService.IncludedService:
             result += ' included'
 
         result = '<' + result + '>'
         return result
 
     def getUuid(self):
-        if self.m_service is None:
-            return []
+        if self.services is None:
+            return ''
 
-        uuid = self.m_service.serviceUuid()
+        uuid = self.services.serviceUuid()
+        # print(f'uuid is: {uuid.toString()}')
+        # print(f"gestripte uuid: {uuid.toString().replace('{', '').replace('}', '').replace('-', '')}")
+        
+        # waarom dit? de kortere uuids?
+        # waarom geen argument bij toUint16??
         success = False
-        result16 = uuid.toUInt16(success)
+        result16 = uuid.toUInt16()
         if success:
             return '0x' + str(result16)    # nog hex van maken
-        result32 = uuid.toUInt32(success)
+        result32 = uuid.toUInt32()
         if success:
             return '0x' + str(result32)
-        return uuid.toString()   # accolades nog weg
+        return uuid.toString().replace('{', '').replace('}', '')
 
     serviceName = pyqtProperty(str, getName, notify=serviceChanged)
     serviceUuid = pyqtProperty(str, getUuid, notify=serviceChanged)
@@ -85,43 +92,46 @@ class CharacteristicsInfo(QObject):
 
     characteristicChanged = pyqtSignal()
 
-    def __init__(self, characteristic: QtBt.QLowEnergyCharacteristic):
+    def __init__(self, characteristic: QtBt.QLowEnergyCharacteristic = None):
         QObject.__init__(self)
-        self.m_characteristic = characteristic
+        if characteristic is not None:
+            self.characteristic = characteristic
 
     def setCharacteristic(self, characteristic: QtBt.QLowEnergyCharacteristic):
-        self.m_characteristic = characteristic
+        self.characteristic = characteristic
         self.characteristicChanged.emit()
 
     def getName(self) -> str:
-        name = self.m_characteristic.name()
-        if name is []:
+        name = self.characteristic.name()
+        if name is not '':
             return name
 
-        descriptors = self.m_characteristic.descriptors()
-        for descriptor in range(descriptors):
+        # find descriptor with CharacteristicUserDescription
+        descriptors = self.characteristic.descriptors()
+        for descriptor in descriptors:
             if descriptor.type() == QtBt.QBluetoothUuid.CharacteristicUserDescription:
-                name = descriptor.value()
+                name = str(descriptor.value())
+                # via descriptor komt de b'---' erbij!
                 break
 
-        if name is []:
+        if name is '':
             name = 'Unknown'
 
         return name
 
     def getUuid(self) -> str:
-        uuid = self.m_characteristic.uuid()
+        uuid = self.characteristic.uuid()
         success = False
-        result16 = uuid.toUInt16(success)
+        result16 = uuid.toUInt16()
         if success:
-            return '0x' + str(result16)    # nog hex van maken
-        result32 = uuid.toUInt32(success)
+            return '0x' + str()    # nog hex van maken
+        result32 = uuid.toUInt32()
         if success:
             return '0x' + str(result32)
         return uuid.toString()  # {} er nog afhalen
 
     def getValue(self) -> str:
-        a = self.m_characteristic.value()
+        a = self.characteristic.value()
         result = ''
         if a.isEmpty():
             result = '<none>'
@@ -130,35 +140,35 @@ class CharacteristicsInfo(QObject):
         result = a
         result += '\n'
         result += a.toHex()
-        return result
+        return str(result)
 
     def getHandle(self) -> str:
-        return '0x' + str(self.n_characteristic.handle())    # nog hex van maken
+        return '0x' + str(self.characteristic.handle())    # nog hex van maken
 
     def getPermission(self) -> str:
         properties = '( '
-        permission = self.m_characteristic.properties()
-        if permission and QtBt.QLowEnergyCharacteristic.Read:
+        permission = self.characteristic.properties()
+        if permission & QtBt.QLowEnergyCharacteristic.Read:
             properties += ' Read'
-        if permission and QtBt.QLowEnergyCharacteristic.Write:
+        if permission & QtBt.QLowEnergyCharacteristic.Write:
             properties += ' Write'
-        if permission and QtBt.QLowEnergyCharacteristic.Notify:
+        if permission & QtBt.QLowEnergyCharacteristic.Notify:
             properties += ' Notify'
-        if permission and QtBt.QLowEnergyCharacteristic.Indicate:
+        if permission & QtBt.QLowEnergyCharacteristic.Indicate:
             properties += ' Indicate'
-        if permission and QtBt.QLowEnergyCharacteristic.ExtendedProperty:
+        if permission & QtBt.QLowEnergyCharacteristic.ExtendedProperty:
             properties += ' ExtendedProperty'
-        if permission and QtBt.QLowEnergyCharacteristic.Broadcasting:
+        if permission & QtBt.QLowEnergyCharacteristic.Broadcasting:
             properties += ' Broadcast'
-        if permission and QtBt.QLowEnergyCharacteristic.WriteNoResponse:
+        if permission & QtBt.QLowEnergyCharacteristic.WriteNoResponse:
             properties += ' WriteNoResp'
-        if permission and QtBt.QLowEnergyCharacteristic.WriteSigned:
+        if permission & QtBt.QLowEnergyCharacteristic.WriteSigned:
             properties += ' WriteSigned'
         properties += ' )'
         return properties
 
-    def getCharacteristics(self) -> QtBt.QLowEnergyCharacteristic:
-        return self.m_characteristic
+    def getCharacteristic(self) -> QtBt.QLowEnergyCharacteristic:
+        return self.characteristic
 
     characteristicName = pyqtProperty(str, getName, notify=characteristicChanged)
     characteristicUuid = pyqtProperty(str, getUuid, notify=characteristicChanged)
@@ -228,10 +238,9 @@ class Device(QObject):
         foundDevices = self.discoveryAgent.discoveredDevices()
         for nextDevice in foundDevices:
             if nextDevice.coreConfigurations() & QtBt.QBluetoothDeviceInfo.LowEnergyCoreConfiguration:
-                print(f'UUID: {nextDevice.address().toString()}, Name: {nextDevice.name()}')
+                # print(f'UUID: {nextDevice.address().toString()}, Name: {nextDevice.name()}')
                 self.devices.append(DeviceInfo(nextDevice))
 
-        print(f'lijst devs:  {self.devices}')
         self.devicesUpdated.emit()
         self.m_deviceScanState = False
         self.stateChanged.emit()
@@ -292,14 +301,14 @@ class Device(QObject):
         self.m_previousAddress = self.currentDevice.getAddress()
 
     @pyqtSlot(QtBt.QBluetoothUuid)
-    def addLowEnergyService(self, serviceUuid: QtBt.QBluetoothUuid):
-        service = self.controller.createServiceObject(serviceUuid)
+    def addLowEnergyService(self, servUuid: QtBt.QBluetoothUuid):
+        service = self.controller.createServiceObject(servUuid)
         if not service:
             print('Warning: Cannot create service for uuid')
             return
         serv = ServiceInfo(service)
         self.m_services.append(serv)
-        print(f'Added {serv.getName()}  lijst {self.m_services}')
+        # print(f'Added {serv.getName()}  lijst {self.m_services}')
         self.servicesUpdated.emit()
 
     @pyqtSlot()
@@ -310,9 +319,8 @@ class Device(QObject):
 
     @pyqtSlot(str)
     def connectToService(self, uuid: str):
-        service = []  # type: QLowEnergyService
-        for s in range(self.m_services.qAsConst):
-            serviceInfo = s   # qobject_cast<ServiceInfo *>(s)
+        for s in self.m_services:
+            serviceInfo = s
             if not serviceInfo:
                 continue
 
@@ -321,6 +329,7 @@ class Device(QObject):
                 break
 
         if not service:
+            print('return from connecttoservice')
             return
 
         self.m_characteristics = []
@@ -337,7 +346,8 @@ class Device(QObject):
             cInfo = CharacteristicsInfo(ch)
             self.m_characteristics.append(cInfo)
 
-        # QTimer::singleShot(0, this, &Device::characteristicsUpdated);
+        # ?
+        QTimer.singleShot(0, self.characteristicsUpdated)
 
     @pyqtSlot()
     def deviceConnected(self):
@@ -370,16 +380,19 @@ class Device(QObject):
     def serviceDetailsDiscovered(self, newState: QtBt.QLowEnergyService.ServiceState):
         if newState != QtBt.QLowEnergyService.ServiceDiscovered:
             if newState != QtBt.QLowEnergyService.DiscoveringServices:
-                print('invokeMethod() ?? ')
+                QMetaObject.invokeMethod(self, "characteristicsUpdated", Qt.QueuedConnection)
             return
 
-        service = QtBt.QLowEnergyService.sender()
+        # hoe de casting als in C++  ?
+        # service = QtBt.QLowEnergyService.sender()
+        service = self.sender()
         if not service:
             return
 
-        chars = service.characteristic()
-        for ch in range(chars):
+        chars = service.characteristics()
+        for ch in chars:
             cInfo = CharacteristicsInfo(ch)
+            # print(f'Characteristics name {cInfo.getName()},  value {cInfo.getValue()},  Uuid {cInfo.getUuid()},  Handle {cInfo.getHandle()},  Permission {cInfo.getPermission()}')
             self.m_characteristics.append(cInfo)
 
         self.characteristicsUpdated.emit()
@@ -414,7 +427,7 @@ class Device(QObject):
 
     devicesList = pyqtProperty(QVariant, getDevices, notify=devicesUpdated)
     servicesList = pyqtProperty(QVariant, getServices, notify=servicesUpdated)
-    characteristicsList = pyqtProperty(QVariant, getCharacteristics, notify=characteristicsUpdated)
+    characteristicList = pyqtProperty(QVariant, getCharacteristics, notify=characteristicsUpdated)
     update = pyqtProperty(str, getUpdate, setUpdate, notify=updateChanged)
     useRandomAddress = pyqtProperty(bool, isRandomAddress, setRandomAddress, notify=randomAddressChanged)
     state = pyqtProperty(bool, state, notify=stateChanged)
